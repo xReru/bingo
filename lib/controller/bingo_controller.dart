@@ -72,7 +72,7 @@ class BingoController extends ChangeNotifier {
       double multiplier = 1.0;
 
       if (spinsLeft <= 20) {
-        multiplier = 0.3; 
+        multiplier = 0.3;
       } else if (spinsLeft <= 30) {
         multiplier = 0.5;
       } else if (spinsLeft >= 50) {
@@ -158,28 +158,40 @@ class BingoController extends ChangeNotifier {
   }
 
   void checkForBingo(BuildContext context) {
-    if (!shouldWin()) return; // Prevent a win based on adjusted probability
+    if (!shouldWin()) return;
 
+    // Check rows and columns for Bingo
     for (int i = 0; i < 5; i++) {
       if (_isMarkedRow(i) || _isMarkedColumn(i)) {
-        lastGameWon = true; // Track the win
-        rewardBet();
-        adjustWinProbability(); // Adjust win probability
-        clearBingoCard();
-        resetGame();
-        showWinDialog(context);
-        return; // Stop after detecting bingo
+        _handleBingo(context);
+        return; // Return early if bingo is found
       }
     }
 
+    // Check diagonals for Bingo
     if (_isMarkedDiagonal()) {
-      lastGameWon = true; // Track the win
-      rewardBet();
-      adjustWinProbability(); // Adjust win probability
-      clearBingoCard();
-      showWinDialog(context); // Show win dialog
-      resetGame();
+      _handleBingo(context);
     }
+  }
+
+  void markNumber(String cellValue, BuildContext context) {
+    if (cellValue != "Free" &&
+        currentBall != null &&
+        currentBall!.endsWith(cellValue)) {
+      final numValue = int.tryParse(cellValue);
+      if (numValue != null) {
+        markedNumbers.add(numValue);
+        notifyListeners(); // Ensure state update
+        checkForBingo(context); // Ensure bingo is checked immediately
+      }
+    }
+  }
+
+  bool _isMarked(int row, int col) {
+    final cellValue = bingoCardNumbers[col]
+        [row]; // Assuming bingoCardNumbers is [column][row]
+    return cellValue == "Free" ||
+        markedNumbers.contains(int.tryParse(cellValue)); // Marked number check
   }
 
   bool _isMarkedRow(int row) {
@@ -197,33 +209,32 @@ class BingoController extends ChangeNotifier {
   }
 
   bool _isMarkedDiagonal() {
+    // Check top-left to bottom-right diagonal
     bool topLeftToBottomRight = true;
     bool topRightToBottomLeft = true;
+
     for (int i = 0; i < 5; i++) {
       if (!_isMarked(i, i)) topLeftToBottomRight = false;
       if (!_isMarked(i, 4 - i)) topRightToBottomLeft = false;
+
+      // Exit early if both diagonals are already invalid
+      if (!topLeftToBottomRight && !topRightToBottomLeft) {
+        return false;
+      }
     }
+
     return topLeftToBottomRight || topRightToBottomLeft;
   }
 
-  bool _isMarked(int row, int col) {
-    final cellValue = bingoCardNumbers[col][row];
-    return cellValue == "Free" ||
-        markedNumbers.contains(int.tryParse(cellValue));
-  }
-
-  // Mark the number immediately
-  void markNumber(String cellValue, BuildContext context) {
-    if (cellValue != "Free" &&
-        currentBall != null &&
-        currentBall!.endsWith(cellValue)) {
-      final numValue = int.tryParse(cellValue);
-      if (numValue != null) {
-        markedNumbers.add(numValue);
-        notifyListeners();
-        checkForBingo(context);
-      }
-    }
+  void _handleBingo(BuildContext context) {
+    lastGameWon = true;
+    rewardBet();
+    adjustWinProbability();
+    clearBingoCard();
+    autoPlayEnabled = false;
+    showWinDialog(context); // Show the win dialog before resetting
+    // Optionally, allow the user to reset the game manually after showing the dialog
+    resetGame();
   }
 
   void updateBetAmount(int amount) {

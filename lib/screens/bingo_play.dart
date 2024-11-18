@@ -72,48 +72,44 @@ class BingoCardScreen extends StatelessWidget {
                     children: [
                       // Place Bet Button
                       ElevatedButton(
-                        onPressed:
-                            controller.spinsLeft > 0 && controller.betAmount == 0
-                                ? () {
-                                    showDialog(
-                                      context: context,
-                                      builder: (BuildContext context) {
-                                        return AlertDialog(
-                                          title: const Text('Place Bet'),
-                                          content: Column(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              TextField(
-                                                keyboardType:
-                                                    TextInputType.number,
-                                                decoration:
-                                                    const InputDecoration(
-                                                        labelText: 'Bet Amount'),
-                                                onChanged: (value) {
-                                                  final bet =
-                                                      int.tryParse(value);
-                                                  if (bet != null) {
-                                                    controller
-                                                        .updateBetAmount(bet);
-                                                  }
-                                                },
-                                              ),
-                                              const SizedBox(height: 20),
-                                              ElevatedButton(
-                                                onPressed: () {
-                                                  controller.placeBet(
-                                                      controller.betAmount);
-                                                  Navigator.of(context).pop();
-                                                },
-                                                child: const Text('Confirm Bet'),
-                                              ),
-                                            ],
+                        onPressed: controller.spinsLeft > 0 &&
+                                controller.betAmount == 0
+                            ? () {
+                                showDialog(
+                                  context: context,
+                                  builder: (BuildContext context) {
+                                    return AlertDialog(
+                                      title: const Text('Place Bet'),
+                                      content: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          TextField(
+                                            keyboardType: TextInputType.number,
+                                            decoration: const InputDecoration(
+                                                labelText: 'Bet Amount'),
+                                            onChanged: (value) {
+                                              final bet = int.tryParse(value);
+                                              if (bet != null) {
+                                                controller.updateBetAmount(bet);
+                                              }
+                                            },
                                           ),
-                                        );
-                                      },
+                                          const SizedBox(height: 20),
+                                          ElevatedButton(
+                                            onPressed: () {
+                                              controller.placeBet(
+                                                  controller.betAmount);
+                                              Navigator.of(context).pop();
+                                            },
+                                            child: const Text('Confirm Bet'),
+                                          ),
+                                        ],
+                                      ),
                                     );
-                                  }
-                                : null,
+                                  },
+                                );
+                              }
+                            : null,
                         child: Text(controller.betAmount == 0
                             ? 'Place Bet'
                             : 'Bet Placed: ${controller.betAmount}'),
@@ -121,7 +117,8 @@ class BingoCardScreen extends StatelessWidget {
                       const SizedBox(width: 20), // Spacing between buttons
                       // Spin Button (Disabled when Auto Play is on)
                       ElevatedButton(
-                        onPressed: controller.autoPlayEnabled || controller.betAmount <= 0
+                        onPressed: controller.autoPlayEnabled ||
+                                controller.betAmount <= 0
                             ? null
                             : controller.spinBall,
                         child: Text(controller.spinsLeft > 0
@@ -219,8 +216,13 @@ class BingoCell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
-      child: Container( 
+      onTap: () {
+        onTap(); // Mark the number and check for bingo
+        final controller = Provider.of<BingoController>(context, listen: false);
+        controller.checkForBingo(
+            context); // Ensure bingo is checked immediately after marking
+      },
+      child: Container(
         decoration: BoxDecoration(
           color: marked ? Colors.red : Colors.blueAccent,
           borderRadius: BorderRadius.circular(8),

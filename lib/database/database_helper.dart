@@ -19,19 +19,18 @@ class DatabaseHelper {
 
   // Initialize the database at the custom path (external storage)
   Future<Database> _initDB(String filePath) async {
-    // Specify your desired path
     final directory =
-        Directory('/storage/emulated/0/Download/BingoGame/database/');
+        await getExternalStorageDirectory(); // Use path_provider for dynamic directory path
+    final dbPath = join(directory!.path, 'BingoGame', 'database', filePath);
 
-    // Check if the directory exists, if not create it
-    if (!(await directory.exists())) {
-      await directory.create(recursive: true);
+    // Ensure the directory exists
+    final dbDir = Directory(join(directory.path, 'BingoGame', 'database'));
+    if (!await dbDir.exists()) {
+      await dbDir.create(recursive: true);
     }
 
-    final path = join(directory.path, filePath);
-
     return await openDatabase(
-      path,
+      dbPath,
       version: 1,
       onCreate: _createDB,
     );
