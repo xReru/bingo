@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 import '../database/database_helper.dart';
 import '../models/user.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
+
+  Future<void> saveUserId(int userId) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('user_id', userId);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,10 +31,10 @@ class LoginScreen extends StatelessWidget {
         final user = await dbHelper.loginUser(email, password);
 
         if (user != null) {
-          // Login successful
+          await saveUserId(user.id!); // Save user ID in SharedPreferences
+          // Navigate to the Bingo screen on successful login
           Navigator.pushNamed(context, '/bingo');
         } else {
-          // Login failed
           _showMessage(context, 'Invalid email or password.');
         }
       } catch (e) {

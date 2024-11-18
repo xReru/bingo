@@ -121,12 +121,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
         username: username,
       );
 
-      // Register the user in the database
+      // Register the user in the database and initialize credits
       final userId = await dbHelper.registerUser(user);
 
       if (userId > 0) {
         // Show success message and redirect to login page
-        _showMessage('Registration successful!', isSuccess: true);
+        _showMessage(
+            'Registration successful! You have been awarded 300 free credits.',
+            isSuccess: true);
       } else {
         _showMessage('Registration failed. Try again.');
       }
