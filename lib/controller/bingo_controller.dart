@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:bingo/database/database_helper.dart';
+import 'package:path/path.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class BingoController extends ChangeNotifier {
@@ -14,6 +15,11 @@ class BingoController extends ChangeNotifier {
   String? currentBall;
   int userCredits = 0;
   int betAmount = 0; // New field to track the bet amount
+  bool lastGameWon = false; // Track if the last game was a win
+  double winProbability = 0.2; // 20% chance to win a game
+
+  bool autoDaubEnabled = false; // Tracks if auto-daub is enabled
+  bool autoPlayEnabled = false; // Tracks if autoplay is enabled
 
   BingoController() {
     _init();
@@ -63,16 +69,48 @@ class BingoController extends ChangeNotifier {
 
   void rewardBet() async {
     if (betAmount > 0) {
-      userCredits += betAmount * 2; // Add winnings to user credits
+      double multiplier = 1.0;
+
+      if (spinsLeft <= 20) {
+        multiplier = 0.3; 
+      } else if (spinsLeft <= 30) {
+        multiplier = 0.5;
+      } else if (spinsLeft >= 50) {
+        multiplier = lastGameWon
+            ? 1.5
+            : 2.0; // 1.5x if won previously, else 2.0x for more than 50 spins left
+      } else if (spinsLeft >= 40) {
+        multiplier = lastGameWon
+            ? 1.0
+            : 1.5; // 1.0x if won previously, else 1.5x for 40+ spins left
+      }
+      int reward = (betAmount * multiplier).round();
+      userCredits += reward;
+
+      // Update the user's credits in the database
       final dbHelper = DatabaseHelper.instance;
       final userId = await getUserId();
+      await dbHelper.updateCredits(userId, reward, 'reward');
 
-      // Update credits in the database
-      await dbHelper.updateCredits(userId, betAmount * 2, 'reward');
-
-      betAmount = 0; // Reset the bet amount
-      notifyListeners();
+      // Reset the bet amount after rewarding
+      betAmount = 0;
+      notifyListeners(); // Notify listeners to update UI
     }
+  }
+
+  void adjustWinProbability() {
+    if (lastGameWon) {
+      winProbability =
+          max(0.1, winProbability - 0.05); // Decrease win probability
+    } else {
+      winProbability =
+          min(0.5, winProbability + 0.05); // Increase win probability
+    }
+  }
+
+  bool shouldWin() {
+    final random = Random();
+    return random.nextDouble() < winProbability;
   }
 
   List<List<String>> _generateBingoNumbers() {
@@ -96,7 +134,7 @@ class BingoController extends ChangeNotifier {
     notifyListeners(); // Notify listeners to update UI
   }
 
-  void spinBall() async {
+  Future<void> spinBall() async {
     if (spinsLeft <= 0 || betAmount == 0) return;
 
     final random = Random();
@@ -114,27 +152,33 @@ class BingoController extends ChangeNotifier {
     currentBall = '$letter $newNumber';
     calledNumbers.add(newNumber);
     spinsLeft--;
-
-    await flutterTts.speak(currentBall ?? '');
     notifyListeners();
+    await flutterTts.speak(currentBall ?? '');
+    await Future.delayed(const Duration(seconds: 1));
   }
 
-  void checkForBingo(Function showWinCallback) {
+  void checkForBingo(BuildContext context) {
+    if (!shouldWin()) return; // Prevent a win based on adjusted probability
+
     for (int i = 0; i < 5; i++) {
       if (_isMarkedRow(i) || _isMarkedColumn(i)) {
-        rewardBet(); // Reward the player if they win
-        clearBingoCard(); // Clear the bingo card after winning
-        resetGame(); // Reset the game (spins and current ball)
-        showWinCallback();
-        return;
+        lastGameWon = true; // Track the win
+        rewardBet();
+        adjustWinProbability(); // Adjust win probability
+        clearBingoCard();
+        resetGame();
+        showWinDialog(context);
+        return; // Stop after detecting bingo
       }
     }
 
     if (_isMarkedDiagonal()) {
-      rewardBet(); // Reward the player if they win
-      clearBingoCard(); // Clear the bingo card after winning
-      resetGame(); // Reset the game (spins and current ball)
-      showWinCallback();
+      lastGameWon = true; // Track the win
+      rewardBet();
+      adjustWinProbability(); // Adjust win probability
+      clearBingoCard();
+      showWinDialog(context); // Show win dialog
+      resetGame();
     }
   }
 
@@ -169,7 +213,7 @@ class BingoController extends ChangeNotifier {
   }
 
   // Mark the number immediately
-  void markNumber(String cellValue) {
+  void markNumber(String cellValue, BuildContext context) {
     if (cellValue != "Free" &&
         currentBall != null &&
         currentBall!.endsWith(cellValue)) {
@@ -177,6 +221,7 @@ class BingoController extends ChangeNotifier {
       if (numValue != null) {
         markedNumbers.add(numValue);
         notifyListeners();
+        checkForBingo(context);
       }
     }
   }
@@ -184,5 +229,61 @@ class BingoController extends ChangeNotifier {
   void updateBetAmount(int amount) {
     betAmount = amount;
     notifyListeners(); // Notify listeners to update the UI
+  }
+
+  // Toggle auto-daub
+  void toggleAutoDaub() {
+    autoDaubEnabled = !autoDaubEnabled;
+    notifyListeners();
+  }
+
+  // Toggle autoplay
+  void toggleAutoPlay(BuildContext context) {
+    autoPlayEnabled = !autoPlayEnabled;
+    if (autoPlayEnabled && betAmount > 0 && spinsLeft > 0) {
+      _autoPlayLoop(context); // Pass context here
+    }
+    notifyListeners();
+  }
+
+  Future<void> _autoPlayLoop(BuildContext context) async {
+    while (autoPlayEnabled && spinsLeft > 0 && betAmount > 0) {
+      await Future.delayed(const Duration(seconds: 1)); // Delay between spins
+      await spinBall();
+      if (autoDaubEnabled && currentBall != null) {
+        autoMark(); // Auto-mark the ball
+        checkForBingo(context); // Check for bingo immediately
+      }
+    }
+  }
+
+  // Automatically mark the current ball
+  void autoMark() {
+    if (currentBall == null) return;
+    final ballNumber = int.tryParse(currentBall!.split(' ').last ?? '');
+    if (ballNumber != null) {
+      markedNumbers.add(ballNumber);
+      notifyListeners();
+    }
+  }
+
+  void showWinDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Congratulations!'),
+          content: Text('You won the game!'),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close the dialog
+              },
+              child: Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
   }
 }
