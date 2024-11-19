@@ -20,6 +20,7 @@ class BingoController extends ChangeNotifier {
 
   bool autoDaubEnabled = false; // Tracks if auto-daub is enabled
   bool autoPlayEnabled = false; // Tracks if autoplay is enabled
+  bool isDiagonalMarked = false; // Tracks if the diagonal is marked
 
   BingoController() {
     _init();
@@ -41,6 +42,7 @@ class BingoController extends ChangeNotifier {
     final dbHelper = DatabaseHelper.instance;
     final userId = await getUserId();
     userCredits = await dbHelper.getCredits(userId);
+    print('Loaded user credits: $userCredits');
     notifyListeners();
   }
 
@@ -67,23 +69,26 @@ class BingoController extends ChangeNotifier {
     }
   }
 
-  void rewardBet() async {
+  void rewardBet(int patternCount) async {
     if (betAmount > 0) {
       double multiplier = 1.0;
 
-      if (spinsLeft <= 20) {
-        multiplier = 0.3;
-      } else if (spinsLeft <= 30) {
-        multiplier = 0.5;
-      } else if (spinsLeft >= 50) {
-        multiplier = lastGameWon
-            ? 1.5
-            : 2.0; // 1.5x if won previously, else 2.0x for more than 50 spins left
+      // Adjust multiplier based on spins left and apply the patternCount multiplier
+      if (spinsLeft >= 50) {
+        multiplier = 2.0 * patternCount; // 50+ spins left -> 2x * patternCount
       } else if (spinsLeft >= 40) {
-        multiplier = lastGameWon
-            ? 1.0
-            : 1.5; // 1.0x if won previously, else 1.5x for 40+ spins left
+        multiplier =
+            1.7 * patternCount; // 40+ spins left -> 1.7x * patternCount
+      } else if (spinsLeft >= 30) {
+        multiplier = 1.0 * patternCount; // 30+ spins left -> 1x * patternCount
+      } else if (spinsLeft >= 20) {
+        multiplier =
+            0.5 * patternCount; // 20+ spins left -> 0.5x * patternCount
+      } else {
+        multiplier = 0.0 * patternCount; // Below 20 spins -> 0x * patternCount
       }
+
+      // Calculate the reward based on the multiplier
       int reward = (betAmount * multiplier).round();
       userCredits += reward;
 
@@ -134,7 +139,7 @@ class BingoController extends ChangeNotifier {
     notifyListeners(); // Notify listeners to update UI
   }
 
-  Future<void> spinBall() async {
+  Future<void> spinBall(BuildContext context) async {
     if (spinsLeft <= 0 || betAmount == 0) return;
 
     final random = Random();
@@ -153,24 +158,37 @@ class BingoController extends ChangeNotifier {
     calledNumbers.add(newNumber);
     spinsLeft--;
     notifyListeners();
+
     await flutterTts.speak(currentBall ?? '');
     await Future.delayed(const Duration(seconds: 1));
+
+    // Auto-mark the number if auto-daub is enabled
+    if (autoDaubEnabled && currentBall != null) {
+      autoMark(context); // Call autoMark after the spin
+      checkForBingo(context); // Check for bingo after auto-marking
+    }
   }
 
   void checkForBingo(BuildContext context) {
-    if (!shouldWin()) return;
+    int patternCount = 0;
 
     // Check rows and columns for Bingo
     for (int i = 0; i < 5; i++) {
-      if (_isMarkedRow(i) || _isMarkedColumn(i)) {
-        _handleBingo(context);
-        return; // Return early if bingo is found
+      if (_isMarkedRow(i)) {
+        patternCount++; // Count the row pattern
+      }
+      if (_isMarkedColumn(i)) {
+        patternCount++; // Count the column pattern
       }
     }
 
-    // Check diagonals for Bingo
-    if (_isMarkedDiagonal()) {
-      _handleBingo(context);
+    if (isDiagonalMarked) {
+      patternCount++; // Count the diagonal pattern if it's marked
+    }
+
+    // If there are any patterns, handle the bingo
+    if (patternCount > 0) {
+      _handleBingo(context, patternCount); // Pass pattern count to handle bingo
     }
   }
 
@@ -181,8 +199,10 @@ class BingoController extends ChangeNotifier {
       final numValue = int.tryParse(cellValue);
       if (numValue != null) {
         markedNumbers.add(numValue);
+        _updateDiagonalStatus(); // Update the diagonal status
         notifyListeners(); // Ensure state update
-        checkForBingo(context); // Ensure bingo is checked immediately
+        checkForBingo(
+            context); // Check bingo immediately after marking a number
       }
     }
   }
@@ -208,32 +228,25 @@ class BingoController extends ChangeNotifier {
     return true;
   }
 
-  bool _isMarkedDiagonal() {
-    // Check top-left to bottom-right diagonal
-    bool topLeftToBottomRight = true;
-    bool topRightToBottomLeft = true;
-
-    for (int i = 0; i < 5; i++) {
-      if (!_isMarked(i, i)) topLeftToBottomRight = false;
-      if (!_isMarked(i, 4 - i)) topRightToBottomLeft = false;
-
-      // Exit early if both diagonals are already invalid
-      if (!topLeftToBottomRight && !topRightToBottomLeft) {
-        return false;
-      }
-    }
-
-    return topLeftToBottomRight || topRightToBottomLeft;
+  void _updateDiagonalStatus() {
+    isDiagonalMarked = (_isMarked(0, 0) &&
+            _isMarked(1, 1) &&
+            _isMarked(2, 2) &&
+            _isMarked(3, 3) &&
+            _isMarked(4, 4)) ||
+        (_isMarked(0, 4) &&
+            _isMarked(1, 3) &&
+            _isMarked(2, 2) &&
+            _isMarked(3, 1) &&
+            _isMarked(4, 0));
   }
 
-  void _handleBingo(BuildContext context) {
-    lastGameWon = true;
-    rewardBet();
-    adjustWinProbability();
+  void _handleBingo(BuildContext context, int patternCount) {
+    // Reward based on the number of patterns detected
+    rewardBet(patternCount);
     clearBingoCard();
     autoPlayEnabled = false;
     showWinDialog(context); // Show the win dialog before resetting
-    // Optionally, allow the user to reset the game manually after showing the dialog
     resetGame();
   }
 
@@ -252,29 +265,32 @@ class BingoController extends ChangeNotifier {
   void toggleAutoPlay(BuildContext context) {
     autoPlayEnabled = !autoPlayEnabled;
     if (autoPlayEnabled && betAmount > 0 && spinsLeft > 0) {
-      _autoPlayLoop(context); // Pass context here
+      _autoPlayLoop(context);
     }
     notifyListeners();
   }
 
   Future<void> _autoPlayLoop(BuildContext context) async {
     while (autoPlayEnabled && spinsLeft > 0 && betAmount > 0) {
-      await Future.delayed(const Duration(seconds: 1)); // Delay between spins
-      await spinBall();
+      await Future.delayed(const Duration(seconds: 1));
+      await spinBall(context); // Spin the ball and get the next number
       if (autoDaubEnabled && currentBall != null) {
-        autoMark(); // Auto-mark the ball
-        checkForBingo(context); // Check for bingo immediately
+        autoMark(context); // Auto-mark the number if it's in the bingo card
+        // Check for bingo immediately after auto-marking the number
+        checkForBingo(
+            context); // This checks if the bingo condition is met immediately
       }
     }
   }
 
-  // Automatically mark the current ball
-  void autoMark() {
+  void autoMark(BuildContext context) {
     if (currentBall == null) return;
     final ballNumber = int.tryParse(currentBall!.split(' ').last ?? '');
     if (ballNumber != null) {
       markedNumbers.add(ballNumber);
-      notifyListeners();
+      _updateDiagonalStatus(); // Update the diagonal status after marking
+      notifyListeners(); // Notify listeners to update the UI
+      checkForBingo(context); // Ensure bingo is checked immediately
     }
   }
 
@@ -296,5 +312,36 @@ class BingoController extends ChangeNotifier {
         );
       },
     );
+  }
+
+  void depositCredits(int amount) async {
+    if (amount >= 200) {
+      final dbHelper = DatabaseHelper.instance;
+      final userId = await getUserId();
+
+      try {
+        await dbHelper.updateCredits(userId, amount, 'deposit');
+        await _loadUserCredits();
+        notifyListeners();
+        print('Deposit successful: $amount credits');
+      } catch (e) {
+        print('Error during deposit: $e');
+        // Optionally notify user of failure
+      }
+    } else {
+      print('Minimum deposit is 200 credits.');
+    }
+  }
+
+  void withdrawCredits(int amount) async {
+    if (amount >= 1000 && userCredits >= amount) {
+      final dbHelper = DatabaseHelper.instance;
+      final userId = await getUserId();
+      int taxedAmount = (amount * 0.98).round();
+      await dbHelper.updateCredits(userId, -taxedAmount, 'withdraw');
+      userCredits -= taxedAmount;
+      await _loadUserCredits();
+      notifyListeners();
+    }
   }
 }

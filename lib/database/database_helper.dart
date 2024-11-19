@@ -161,6 +161,7 @@ class DatabaseHelper {
         'amount': amount,
       });
     });
+    print('Updating credits: $amount, Type: $type');
   }
 
   Future<List<Map<String, dynamic>>> getTransactions(int userId) async {

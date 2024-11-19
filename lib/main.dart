@@ -2,9 +2,16 @@ import 'package:flutter/material.dart';
 import 'screens/user_login.dart';
 import 'screens/user_registration.dart';
 import 'screens/bingo_play.dart';
-
+import 'screens/transaction.dart';
+import 'package:provider/provider.dart';
+import 'controller/bingo_controller.dart';
 void main() {
-  runApp(const MainApp());
+  runApp(MultiProvider(
+    providers: [
+      ChangeNotifierProvider(create: (_) => BingoController()),
+    ],
+    child: const MainApp(),
+  ));
 }
 
 class MainApp extends StatelessWidget {
@@ -25,5 +32,4 @@ class MainApp extends StatelessWidget {
       },
     );
   }
-  
 }

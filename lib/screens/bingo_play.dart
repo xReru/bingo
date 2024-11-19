@@ -1,21 +1,44 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../controller/bingo_controller.dart';
+import 'user_login.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'transaction.dart';
 
 class BingoCardScreen extends StatelessWidget {
   const BingoCardScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => BingoController(),
+    return WillPopScope(
+      onWillPop: () async {
+        // Prevent going back accidentally
+        final shouldExit = await _showExitConfirmationDialog(context);
+        return shouldExit ?? false;
+      },
       child: Consumer<BingoController>(
         builder: (context, controller, _) {
           return Scaffold(
-            appBar: AppBar(title: Text('Bingo Card')),
+            appBar: AppBar(
+              title: const Text('Bingo Card'),
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.account_balance_wallet),
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => TransactionDialog(),
+                    );
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.logout),
+                  onPressed: () => _showLogoutConfirmationDialog(context),
+                ),
+              ],
+            ),
             body: Column(
               children: [
-                // Current Ball Text (Placed at the top)
                 Padding(
                   padding: const EdgeInsets.all(8.0),
                   child: Text(
@@ -29,7 +52,7 @@ class BingoCardScreen extends StatelessWidget {
                 // Credits display (Placed right after the current ball)
                 Padding(
                   padding: const EdgeInsets.all(8.0),
-                  child: Text('Credits: ${controller.userCredits}'),
+                  child: Text('Credits: ₱${controller.userCredits}.00'),
                 ),
                 // Bingo card grid (Main part of the screen)
                 Expanded(
@@ -120,7 +143,11 @@ class BingoCardScreen extends StatelessWidget {
                         onPressed: controller.autoPlayEnabled ||
                                 controller.betAmount <= 0
                             ? null
-                            : controller.spinBall,
+                            : () async {
+                                await context
+                                    .read<BingoController>()
+                                    .spinBall(context);
+                              },
                         child: Text(controller.spinsLeft > 0
                             ? 'Spin (${controller.spinsLeft} spins left)'
                             : 'No Spins Left'),
@@ -176,6 +203,59 @@ class BingoCardScreen extends StatelessWidget {
           );
         },
       ),
+    );
+  }
+
+  void _showLogoutConfirmationDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Logout Confirmation'),
+          content: const Text('Are you sure you want to log out?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(), // Close dialog
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.clear(); // Clear user session
+                Navigator.of(context).pop(); // Close dialog
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => const LoginScreen()),
+                );
+              },
+              child: const Text('Logout'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<bool?> _showExitConfirmationDialog(BuildContext context) {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Exit Confirmation'),
+          content: const Text(
+              'Are you sure you want to exit the app? Your progress will be saved.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Exit'),
+            ),
+          ],
+        );
+      },
     );
   }
 }
