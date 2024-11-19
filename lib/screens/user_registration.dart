@@ -10,12 +10,13 @@ class RegisterScreen extends StatefulWidget {
   State<RegisterScreen> createState() => _RegisterScreenState();
 }
 
-class _RegisterScreenState extends State<RegisterScreen> {
+class _RegisterScreenState extends State<RegisterScreen> with SingleTickerProviderStateMixin {
+  late AnimationController _animationController;
+
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController =
-      TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
 
   final ValueNotifier<String?> _usernameError = ValueNotifier<String?>(null);
   final ValueNotifier<String?> _passwordError = ValueNotifier<String?>(null);
@@ -26,6 +27,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   void initState() {
     super.initState();
+    _animationController = AnimationController(
+      duration: const Duration(seconds: 2),
+      vsync: this,
+    )..repeat(reverse: true);
+
     requestPermissions();
     _usernameController.addListener(_validateUsername);
     _passwordController.addListener(_validatePassword);
@@ -49,7 +55,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     } else if (username.length < 6) {
       _usernameError.value = "Username must be at least 6 characters long.";
     } else {
-      _usernameError.value = null; // Valid username
+      _usernameError.value = null;
     }
   }
 
@@ -57,12 +63,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final password = _passwordController.text.trim();
     if (password.isEmpty) {
       _passwordError.value = "Password cannot be empty.";
-    } else if (!RegExp(r'^(?=.*[0-9])(?=.*[!@#$%^&*(),.?":{}|<>]).+$')
-        .hasMatch(password)) {
-      _passwordError.value =
-          "Password must contain at least a number and a special character.";
+    } else if (!RegExp(r'^(?=.*[0-9])(?=.*[!@#$%^&*(),.?":{}|<>]).+$').hasMatch(password)) {
+      _passwordError.value = "Password must contain at least a number and a special character.";
     } else {
-      _passwordError.value = null; // Valid password
+      _passwordError.value = null;
     }
   }
 
@@ -80,7 +84,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
-    // Check for empty fields
     if (email.isEmpty || confirmPassword.isEmpty) {
       _showMessage('All fields are required.');
       return;
@@ -91,7 +94,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
-    // Check if email is valid
     if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(email)) {
       _showMessage('Please enter a valid email address.');
       return;
@@ -100,7 +102,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     try {
       final dbHelper = DatabaseHelper.instance;
 
-      // Check if email or username already exists
       final isEmailExists = await dbHelper.isEmailExists(email);
       final isUsernameExists = await dbHelper.isUsernameExists(username);
 
@@ -114,21 +115,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
         return;
       }
 
-      // Create a user object
-      final user = User(
-        email: email,
-        password: password,
-        username: username,
-      );
-
-      // Register the user in the database and initialize credits
+      final user = User(email: email, password: password, username: username);
       final userId = await dbHelper.registerUser(user);
 
       if (userId > 0) {
-        // Show success message and redirect to login page
-        _showMessage(
-            'Registration successful! You have been awarded 300 free credits.',
-            isSuccess: true);
+        _showMessage('Registration successful! You have been awarded 300 free credits.', isSuccess: true);
       } else {
         _showMessage('Registration failed. Try again.');
       }
@@ -146,10 +137,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop(); // Close the dialog
+                Navigator.of(context).pop();
                 if (isSuccess) {
-                  Navigator.pushReplacementNamed(
-                      context, '/login'); // Redirect to login page
+                  Navigator.pushReplacementNamed(context, '/login');
                 }
               },
               child: const Text('OK'),
@@ -163,72 +153,165 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Register')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: ListView(
-          children: [
-            TextField(
-              controller: _emailController,
-              decoration: const InputDecoration(labelText: 'Email'),
-              keyboardType: TextInputType.emailAddress,
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _usernameController,
-              decoration: InputDecoration(
-                labelText: 'Username',
-                helperText: 'Username must be at least 6 characters long.',
-                errorText: _usernameError.value,
+      body: Container(
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/images/bg.png'),
+            fit: BoxFit.cover,
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Bingo Mania with neon glowing effect animation
+              AnimatedBuilder(
+                animation: _animationController,
+                builder: (context, child) {
+                  return ShaderMask(
+                    shaderCallback: (Rect bounds) {
+                      return LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        stops: [
+                          _animationController.value,
+                          _animationController.value + 0.1,
+                          _animationController.value + 0.2,
+                          _animationController.value + 0.3,
+                          _animationController.value + 0.4,
+                          _animationController.value + 0.5,
+                        ],
+                        colors: [
+                          Color(0xffb22222),
+                          Colors.blueAccent,
+                          Colors.pinkAccent,
+                          Colors.greenAccent,
+                          Colors.yellowAccent,
+                          Colors.purpleAccent,
+                        ],
+                      ).createShader(bounds);
+                    },
+                    child: Text(
+                      'Bingo Mania',
+                      style: TextStyle(
+                        fontFamily: 'Bingo', // You can change the font to match your design
+                        fontSize: 40,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  );
+                },
               ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _passwordController,
-              obscureText: !_passwordVisible,
-              decoration: InputDecoration(
-                labelText: 'Password',
-                helperText:
-                    'Password must contain at least a number and a special character.',
-                errorText: _passwordError.value,
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    _passwordVisible ? Icons.visibility : Icons.visibility_off,
+              const SizedBox(height: 40),
+
+              // Email TextField
+              TextField(
+                controller: _emailController,
+                style: TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  labelText: 'Email',
+                  labelStyle: TextStyle(color: Colors.white),
+                  enabledBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: Colors.white),
                   ),
-                  onPressed: () {
-                    setState(() {
-                      _passwordVisible = !_passwordVisible;
-                    });
-                  },
+                  focusedBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: Colors.white),
+                  ),
+                ),
+                keyboardType: TextInputType.emailAddress,
+              ),
+              const SizedBox(height: 20),
+
+              // Username TextField
+              TextField(
+                controller: _usernameController,
+                style: TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  labelText: 'Username',
+                  labelStyle: TextStyle(color: Colors.white),
+                  errorText: _usernameError.value,
+                  enabledBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: Colors.white),
+                  ),
+                  focusedBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: Colors.white),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _confirmPasswordController,
-              obscureText: !_confirmPasswordVisible,
-              decoration: InputDecoration(
-                labelText: 'Confirm Password',
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    _confirmPasswordVisible
-                        ? Icons.visibility
-                        : Icons.visibility_off,
+              const SizedBox(height: 20),
+
+              // Password TextField
+              TextField(
+                controller: _passwordController,
+                style: TextStyle(color: Colors.white),
+                obscureText: !_passwordVisible,
+                decoration: InputDecoration(
+                  labelText: 'Password',
+                  labelStyle: TextStyle(color: Colors.white),
+                  errorText: _passwordError.value,
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _passwordVisible ? Icons.visibility : Icons.visibility_off,
+                      color: Colors.white,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _passwordVisible = !_passwordVisible;
+                      });
+                    },
                   ),
-                  onPressed: () {
-                    setState(() {
-                      _confirmPasswordVisible = !_confirmPasswordVisible;
-                    });
-                  },
+                  enabledBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: Colors.white),
+                  ),
+                  focusedBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: Colors.white),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _register,
-              child: const Text('Register'),
-            ),
-          ],
+              const SizedBox(height: 20),
+
+              // Confirm Password TextField
+              TextField(
+                controller: _confirmPasswordController,
+                style: TextStyle(color: Colors.white),
+                obscureText: !_confirmPasswordVisible,
+                decoration: InputDecoration(
+                  labelText: 'Confirm Password',
+                  labelStyle: TextStyle(color: Colors.white),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _confirmPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                      color: Colors.white,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _confirmPasswordVisible = !_confirmPasswordVisible;
+                      });
+                    },
+                  ),
+                  enabledBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: Colors.white),
+                  ),
+                  focusedBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: Colors.white),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 30),
+
+              // Register Button
+              ElevatedButton(
+                onPressed: _register,
+                child: const Text('Register'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 80),
+                  textStyle: const TextStyle(fontSize: 18),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

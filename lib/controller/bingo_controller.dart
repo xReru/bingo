@@ -2,7 +2,6 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:bingo/database/database_helper.dart';
-import 'package:path/path.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class BingoController extends ChangeNotifier {
@@ -13,6 +12,7 @@ class BingoController extends ChangeNotifier {
 
   int spinsLeft = 75;
   String? currentBall;
+  String? currentNumber; // Stores the numeric part of the ball.
   int userCredits = 0;
   int betAmount = 0; // New field to track the bet amount
   bool lastGameWon = false; // Track if the last game was a win
@@ -37,6 +37,7 @@ class BingoController extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getInt('user_id') ?? 0;
   }
+
 
   Future<void> _loadUserCredits() async {
     final dbHelper = DatabaseHelper.instance;
@@ -154,7 +155,8 @@ class BingoController extends ChangeNotifier {
       letter = ['B', 'I', 'N', 'G', 'O'][colIndex];
     } while (calledNumbers.contains(newNumber));
 
-    currentBall = '$letter $newNumber';
+    currentBall = '$letter $newNumber'; // Full ball text for TTS.
+    currentNumber = '$newNumber'; // Store only the numeric value.
     calledNumbers.add(newNumber);
     spinsLeft--;
     notifyListeners();
@@ -299,14 +301,26 @@ class BingoController extends ChangeNotifier {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Congratulations!'),
-          content: Text('You won the game!'),
+          title: Text(
+            'Congratulations!',
+            style: TextStyle(fontFamily: 'Bingo', color: Color(0xffb22222)),
+          ),
+          content: Text(
+            'BINGO!!!',
+            style: TextStyle(
+                fontFamily: 'Bingo',
+                color: Color(0xffb22222),
+                fontWeight: FontWeight.bold),
+          ),
           actions: <Widget>[
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop(); // Close the dialog
               },
-              child: Text('OK'),
+              child: Text(
+                'OK',
+                style: TextStyle(fontFamily: 'Bingo', color: Color(0xffb22222)),
+              ),
             ),
           ],
         );

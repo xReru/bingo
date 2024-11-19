@@ -7,9 +7,11 @@ environment:
   sdk: ^3.5.3
 
 dependencies:
+  audioplayers: ^6.1.0
   flutter:
     sdk: flutter
   flutter_tts: ^4.2.0
+  just_audio: ^0.9.42
   path: ^1.9.0
   path_provider: ^2.1.5
   permission_handler: ^11.3.1
@@ -24,3 +26,11 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/images/BingoBall/
+    - assets/music/
+  fonts:
+    - family: Bingo
+      fonts:
+        - asset: assets/fonts/BattleBingo.ttf

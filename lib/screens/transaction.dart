@@ -8,7 +8,7 @@ class TransactionDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text('Choose Operation'),
+      title: Text('Choose Operation', style: TextStyle(fontFamily: 'Bingo',color:Color(0xffb22222)),),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -20,7 +20,7 @@ class TransactionDialog extends StatelessWidget {
                 builder: (context) => DepositDialog(),
               );
             },
-            child: Text('Deposit'),
+            child: Text('Deposit', style: TextStyle(fontFamily: 'Bingo',color:Color(0xffb22222)),),
           ),
           ElevatedButton(
             onPressed: () {
@@ -30,7 +30,7 @@ class TransactionDialog extends StatelessWidget {
                 builder: (context) => WithdrawDialog(),
               );
             },
-            child: Text('Withdraw'),
+            child: Text('Withdraw', style: TextStyle(fontFamily: 'Bingo',color:Color(0xffb22222)),),
           ),
         ],
       ),
@@ -50,7 +50,7 @@ class _DepositDialogState extends State<DepositDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text('Deposit Credits'),
+      title: Text('Deposit Credits', style: TextStyle(fontFamily: 'Bingo',color:Color(0xffb22222)),),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -73,14 +73,14 @@ class _DepositDialogState extends State<DepositDialog> {
                 amount = 0; // Reset to 0 or handle invalid input appropriately
               }
             },
-            decoration: InputDecoration(labelText: 'Amount (min 200)'),
+            decoration: InputDecoration(labelText: 'Amount (min 200)',labelStyle: TextStyle(fontFamily: 'Bingo',color:Color(0xffb22222)),),
           ),
         ],
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: Text('Cancel'),
+          child: Text('Cancel', style: TextStyle(fontFamily: 'Bingo',color:Color(0xffb22222)),),
         ),
         ElevatedButton(
           onPressed: () {
@@ -91,11 +91,11 @@ class _DepositDialogState extends State<DepositDialog> {
               Navigator.of(context).pop();
             } else {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Minimum deposit is 200 credits.')),
+                SnackBar(content: Text('Minimum deposit is 200 credits.', style: TextStyle(fontFamily: 'Bingo',color:Color.fromARGB(255, 238, 238, 238)),)),
               );
             }
           },
-          child: Text('Deposit'),
+          child: Text('Deposit', style: TextStyle(fontFamily: 'Bingo',color:Color(0xffb22222)),),
         ),
       ],
     );
@@ -114,7 +114,7 @@ class _WithdrawDialogState extends State<WithdrawDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text('Withdraw Credits'),
+      title: Text('Withdraw Credits', style: TextStyle(fontFamily: 'Bingo',color:Color(0xffb22222)),),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -131,14 +131,14 @@ class _WithdrawDialogState extends State<WithdrawDialog> {
           TextField(
             keyboardType: TextInputType.number,
             onChanged: (value) => amount = int.parse(value),
-            decoration: InputDecoration(labelText: 'Amount (min 1000)'),
+            decoration: InputDecoration(labelText: 'Amount (min 1000)',labelStyle: TextStyle(fontFamily: 'Bingo',color:Color(0xffb22222)),),
           ),
         ],
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: Text('Cancel'),
+          child: Text('Cancel', style: TextStyle(fontFamily: 'Bingo',color:Color(0xffb22222)),),
         ),
         ElevatedButton(
           onPressed: () {
@@ -154,15 +154,17 @@ class _WithdrawDialogState extends State<WithdrawDialog> {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                     content: Text(
-                        'Withdraw successful: ${withdrawableAmount.toStringAsFixed(2)}')),
+                        'Withdraw successful: ${withdrawableAmount.toStringAsFixed(2)}', style: TextStyle(fontFamily: 'Bingo',color:Colors.white,))
+              )
               );
             } else if (amount < 1000) {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Minimum withdrawal is 1000 credits.')),
+                SnackBar(content: Text('Minimum withdrawal is 1000 credits.', style: TextStyle(fontFamily: 'Bingo',color:Color(0xffb22222)),)),
               );
             } else {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Insufficient credits.')),
+                SnackBar(content: Text('Insufficient credits.', style: TextStyle(fontFamily: 'Bingo',color:Colors.white)),
+              )
               );
             }
           },
